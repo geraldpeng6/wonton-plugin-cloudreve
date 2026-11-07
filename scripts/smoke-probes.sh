@@ -17,9 +17,8 @@ web_assert() { grep -qi 'cloudreve'; }   # SPA 首页 HTML（标题和资源路�
 
 identity_check() { # 应用自己的登录配置：注册开放，首个注册账号即管理员
   local cfg
-  # SMOKE_WEB_URL 带尾斜杠，web_get 直拼会出 //api/...，应用把未匹配路径当 SPA 首页回 HTML，
-  # 所以这里自己拼：剥掉尾斜杠，带 $SMOKE_JAR 会话。
-  cfg="$(curl -sS --noproxy '*' --fail-with-body -b "$SMOKE_JAR" "${SMOKE_WEB_URL%/}/api/v4/site/config/login" -H 'Accept: application/json')" ||
+  # dweb（dev.sh web）两套 harness 都保证：会话和 URL 拼接它自己处理，不用 SMOKE_JAR/SMOKE_WEB_URL。
+  cfg="$(dweb /api/v4/site/config/login -H 'Accept: application/json')" ||
     { echo "GET /api/v4/site/config/login 失败：$cfg"; return 1; }
   jq -e '.data.register_enabled == true' <<<"$cfg" >/dev/null ||
     { echo "注册没开放，第一次打开没法建管理员：$cfg"; return 1; }
