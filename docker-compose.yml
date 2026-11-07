@@ -1,78 +1,73 @@
-# 示例插件：nginx 显示一个网页，向登录的人问好。改成自己的应用见 https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md#写插件。
+# Cloudreve：自托管网盘。上游官方镜像（GPL-3.0），默认 SQLite，无需额外数据库服务。
 services:
-  web:
-    # 镜像按摘要固定（多架构镜像写清单列表的摘要），标签只给人看。
-    image: nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
+  cloudreve:
+    # 多架构清单摘要（amd64/arm64），标签只给人看。
+    image: cloudreve/cloudreve:4.19.1@sha256:5c6c5baf7fa5bc6e1bb9a7509c09dde00e80b618d180244eb1d5f7e36b358ea2
+    # 上游镜像默认以 root 运行：入口脚本用 supervisord 拉 aria2（离线下载），supervisord 要写
+    # /cloudreve 下的日志和 pid（实测以 PUID:PGID 运行时 PermissionError，aria2 起不来）。
+    # 数据目录由核心按 root 服务交给 PUID:PGID，root 可写；里面的文件属主是 root。
     environment:
-      # 网关代登录：SSI 回显的 Remote-User 只信核心带来的。官方镜像启动时对 templates 目录里的
-      # *.template 做 envsubst，把下面的地址换进 nginx 配置（见 web/default.conf.template）。
-      WONTON_CORE_ADDRESS: ${WONTON_CORE_ADDRESS}
-    # 包里的文件经 configs 交给容器（核心在启动前写进去），不能用卷挂载。
-    configs:
-      - source: site
-        target: /etc/nginx/templates/default.conf.template
-      - source: page
-        target: /usr/share/nginx/html/index.html
-      - source: tokens
-        target: /usr/share/nginx/html/tokens.css
+      TZ: ${TZ}
+      # 站点地址用于分享外链和邮件里的链接。CR_SETTING_DEFAULT_* 只在首次建库补缺时落库
+      # （inventory/migration.go），之后管理员在后台改，升级和重建容器都不覆盖。
+      CR_SETTING_DEFAULT_siteURL: ${WONTON_APP_URL}
+    volumes:
+      # SQLite 数据库、conf.ini（首次启动生成的会话密钥，重建容器后沿用）、上传的文件、
+      # 头像和临时目录都在这里（上游镜像的 VOLUME）。
+      - ${WONTON_APP_DATA}:/cloudreve/data
+    # 镜像里是 Alpine 的 busybox wget：-Y off 不走代理（出网插件的代理变量不该影响健康检查）。
+    # site/config/login 是登录页要拉的公开配置，走了设置读取的完整链路，比只回版本号的 site/ping 更能代表可用。
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      test: ["CMD", "wget", "-q", "-Y", "off", "-O", "/dev/null", "http://127.0.0.1:5212/api/v4/site/config/login"]
       interval: 30s
       timeout: 5s
       start_period: 30s
       start_interval: 1s
 
-configs:
-  site:
-    file: web/default.conf.template
-  page:
-    file: web/index.html
-  tokens:
-    file: web/tokens.css
-
 x-wonton:
-  spec: "0.5"
-  # 换成你自己的：反向域名形式，装上以后不能改。
-  id: app.example.hello
-  version: 0.1.1
+  spec: "0.6"
+  id: org.cloudreve.cloudreve
+  version: 0.1.0
   kind: app
-  title: { zh: 你好, en: Hello }
-  description: { zh: 向登录的人问好的示例网页, en: An example page that greets whoever is signed in }
-  icon: icon.svg
+  title: { en: Cloudreve }
+  description:
+    zh: 自己的网盘：上传下载、在线预览、分享外链、离线下载
+    en: Your own cloud drive with uploads, previews, share links and offline downloads
+  icon: icon.png
   notices: [NOTICE]
-  screenshots: [screenshots/home.png]
-  author: { name: Example }
-  homepage: https://nginx.org
-  # 应用（这里是 nginx）的许可证；插件包自己的许可证写在仓库的 LICENSE 里。
-  license: BSD-2-Clause
+  screenshots: [screenshots/explorer.png, screenshots/media.png, screenshots/upload.png, screenshots/share.png, screenshots/login.png]
+  author: { name: geraldpeng6, url: "https://github.com/geraldpeng6" }
+  homepage: https://cloudreve.org
+  # 上游 Cloudreve 的许可证；插件包自己的许可证在仓库 LICENSE 里。
+  license: GPL-3.0-only
   tags:
-    zh: [工具]
-    en: [Tools]
+    zh: [文件, 下载]
+    en: [Files, Downloads]
   about:
     zh: |
-      一个示例网页：登录以后，页面会向你问好。新建插件时可以照着改。
+      住在自己服务器上的网盘：手机里的照片视频随手备份，文档、压缩包在线预览，文件夹一键生成分享外链。
+
+      把链接或种子交给离线下载，Cloudreve 用自带的 aria2 拉回来，回来就在你的网盘里。
+
+      打开网页要用 Cloudreve 自己的账号登录；第一次打开时注册的账号就是管理员，注册入口只有登录过云吞的你能看到。
     en: |
-      An example page: once you are signed in, the page says hello. Copy it as a starting point for a new plugin.
-  release_notes: { zh: 名字和说明更新。, en: Product name and description update. }
+      A cloud drive that lives on your own server: back up photos and videos from your phone, preview documents and archives, and turn any folder into a share link.
+
+      Hand a link or a torrent to the offline downloader and Cloudreve fetches it with the bundled aria2; it lands straight in your drive.
+
+      The web UI signs in with its own Cloudreve account. The account you register on first open is the admin, and the sign-up page is only reachable through the Wonton gateway.
+  release_notes: { zh: 首个版本。, en: First release. }
   webui:
-    service: web
-    port: 80
-    # 示例页回显网关注入的用户名，见 https://github.com/geraldpeng6/wonton-docs/blob/main/plugin-spec.md#网关代登录sso-proxy。
-    sso: proxy
-    proxy:
-      headers:
-        Remote-User: "{user}"
-  # 能放到底栏的页面，见 https://github.com/geraldpeng6/wonton-docs/blob/main/plugin-spec.md#底栏页面tabs。放不放由用户决定。
-  tabs:
-    - id: home
-      title: { zh: 主页, en: Home }
-      icon: tabs/home.svg
-      icon_selected: tabs/home-fill.svg
-      path: /
-      # 这个页面没做适配，用默认的 inset：页面夹在 App 的栏中间，不会被挡。
-      # 想让内容从栏下滚过，写 layout: edge-to-edge，并用 --wonton-inset-* 留出栏的位置。
-  permissions: []
-  # 上游 nginx 官方镜像，amd64 和 arm64 都有；上游没写最低内存，按本机空闲实测取整（实测约 24M，取 64M）。
+    service: cloudreve
+    port: 5212
+    # 免费版（社区版）没有 OIDC（付费 Pro 功能），也不支持信任反代头登录：
+    # 源码里 System.ProxyHeader 只是 gin TrustedPlatform 的客户端 IP 解析，认证只有
+    # 邮箱密码/JWT 和 WebDAV Basic（docs.cloudreve.org/en/usage/oidc 标注 Pro edition）。
+    sso: none
+  # 离线下载（HTTP/_BT）、远端存储策略、邮件发送要出网。核心会带上平台出口代理。
+  permissions:
+    - network.egress
+  # 上游没写最低内存；本机空闲实测约 130 MiB（含 aria2 和缩略图工具），取 256M。
   requirements:
     arch: [amd64, arm64]
-    memory: 64M
+    memory: 256M

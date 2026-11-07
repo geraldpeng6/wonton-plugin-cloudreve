@@ -1,31 +1,12 @@
-# 云吞插件模板
+# 云吞插件：Cloudreve
 
-开发流程见[插件开发指南](https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md)。
+把 [Cloudreve](https://cloudreve.org)（自托管网盘，GPL-3.0）装进云吞：上传下载、在线预览、分享外链、离线下载。开发流程见[插件开发指南](https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md)。
 
-这是一个能安装的示例插件 `app.example.hello`：使用 nginx 官方镜像显示问候页，经网关的 `sso: proxy` 注入用户名，页面显示“你好，<用户名>”。示例没有应用账号、持久化数据或 MCP 工具。
-
-## 示例文件
-
-| 路径 | 内容 |
-| --- | --- |
-| `docker-compose.yml` | 示例清单、nginx 服务和三个 `configs` |
-| `web/default.conf.template` | nginx 配置，启用 SSI 回显用户名并提供健康检查入口；只放行来自核心地址（`${WONTON_CORE_ADDRESS}`）的请求，其余来源 403 |
-| `web/index.html` | 问候页 |
-| `web/tokens.css` | 页面主题变量的后备值 |
-| `tabs/` | 示例主页的底栏图标 |
-| `screenshots/home.png` | 商店详情页的示例截图 |
-| `scripts/smoke-probes.sh` | 检查真实页面和网关注入身份的插件探针 |
-
-从模板创建自己的插件后，替换示例清单、网页和素材；具体步骤见[写插件](https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md#写插件)。
-
-## 更新开发套件
-
-```bash
-scripts/dev.sh kit-update
-```
-
-在从模板新建的插件仓库中更新套件；本仓库是套件源头，执行时只提示并退出。版本、可选引用和自定义脚本约定见[开发指南](https://github.com/geraldpeng6/wonton-docs/blob/main/develop.md#更新开发套件)。
+- 上游官方镜像 `cloudreve/cloudreve`，按多架构清单摘要固定；默认 SQLite，数据（数据库、配置、上传的文件）都在插件数据目录。
+- 登录是 Cloudreve 自己的账号（`sso: none`）：第一次打开时注册的账号就是管理员，注册入口只在云吞网关后面。免费版没有 OIDC（付费 Pro 功能），也不支持信任反代头登录，见清单注释。建好管理员后，建议在 Cloudreve 后台关闭开放注册（设置 → 用户会话 → 注册），新账号只能由管理员邀请。
+- 离线下载用镜像自带的 aria2（`CR_ENABLE_ARIA2=1`，首次建库时自动写好本机 RPC 配置），BT 监听端口 6888 未对局域网开放，只做出网连接。
+- 站点地址在首次建库时写成插件的网页地址（`CR_SETTING_DEFAULT_siteURL`），之后在 Cloudreve 后台改。
 
 ## 图标
 
-`icon.svg` 是本仓库原创线条图标，按本仓库 MIT 许可证分发，见 [NOTICE](NOTICE)。
+`icon.png` 是 Cloudreve 官方标志的栅格化版本，来源和处理方式、商标说明见 [NOTICE](NOTICE)。
