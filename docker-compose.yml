@@ -29,10 +29,10 @@ x-wonton:
   id: org.cloudreve.cloudreve
   version: 0.1.0
   kind: app
-  title: { en: Cloudreve }
+  title: { zh: 私人网盘（Cloudreve）, en: Personal Cloud Drive (Cloudreve) }
   description:
-    zh: 自己的网盘：上传下载、在线预览、分享外链、离线下载
-    en: Your own cloud drive with uploads, previews, share links and offline downloads
+    zh: 像把百度网盘整个搬回家：文件在线预览、一键生成分享链接，还能把下载链接交给它，它下好直接放进网盘。用 Cloudreve 自己的账号登录，适合常分享、常离线下载的人。
+    en: "Like moving a whole cloud drive service home: preview files online, share with one tap, and hand it a download link to fetch straight into your drive. It has its own Cloudreve sign-in; good if you share a lot or queue up downloads."
   icon: icon.png
   notices: [NOTICE]
   screenshots: [screenshots/explorer.png, screenshots/media.png, screenshots/upload.png, screenshots/share.png, screenshots/login.png]
